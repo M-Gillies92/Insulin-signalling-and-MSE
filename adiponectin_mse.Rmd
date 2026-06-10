@@ -1,0 +1,128 @@
+
+
+```{r}
+library(TwoSampleMR)
+library(dplyr)
+library(openxlsx)
+library(data.table)
+adipins <- read.xlsx("data\\adiponectin.xlsx")
+refbio <- fread("data\\mse.txt.gz")
+library(tidyverse)
+
+```
+
+
+```{r}
+
+adip_clumped <- format_data(adipins,
+                          type = "exposure",
+                          effect_allele_col = "A1",
+                          beta_col = "BETA",
+                          se_col = "SE",
+                          other_allele_col = "A2",
+                          pval_col = "P",
+                          eaf_col = "EAF")
+
+adip_data <- clump_data(adip_clumped, clump_r2 = 0.001)
+```
+
+
+
+```{r}
+refractive_data <- merge(refbio,
+                         adip_data,
+                         by="SNP")
+
+refractive_data <- unique(refractive_data)
+```
+
+
+```{r}
+refractive_data <- data.frame(refractive_data)
+ref_clumped <- format_data(refractive_data,
+                           type = "outcome",
+                           effect_allele_col = "EA",
+                           beta_col = "BETA",
+                           se_col = "SE",
+                           other_allele_col = "NEA",
+                           pval_col = "P",
+                           eaf_col = "EAF")
+```
+
+```{r}
+harmonised_adip_ref <- harmonise_data(exposure_dat = adip_data,
+                                    outcome_dat = ref_clumped)
+```
+
+
+
+```{r}
+F <- 
+  harmonised_adip_ref$beta.exposure^2/harmonised_adip_ref$se.exposure^2
+mF <- mean(F)
+mF
+```
+
+
+```{r}
+mr_adip_ref <- mr(harmonised_adip_ref, 
+                method_list = "mr_ivw")
+mr_adip_ref
+```
+
+```{r}
+mr_scatter_plot(mr_adip_ref, harmonised_adip_ref)
+```
+
+
+```{r}
+mr_heterogeneity(harmonised_adip_ref)
+```
+
+
+```{r}
+mr_adip_ref_egg <-  mr(harmonised_adip_ref, 
+                     method_list = "mr_egger_regression")
+mr_adip_ref_egg
+
+mr_adip_egg_int <- mr_pleiotropy_test(harmonised_adip_ref)
+
+mr_adip_egg_int
+```
+
+
+
+```{r}
+mr_scatter_plot(mr_adip_ref_egg, harmonised_adip_ref)
+```
+
+
+```{r}
+mr_adip_ref_wm <-  mr(harmonised_adip_ref, 
+                    method_list = "mr_weighted_median")
+mr_adip_ref_wm
+```
+
+
+```{r}
+mr_scatter_plot(mr_adip_ref_wm, harmonised_adip_ref)
+```
+
+
+```{r}
+mr_forest_plot(mr_singlesnp(harmonised_adip_ref))
+```
+
+```{r}
+mradiref <- mr(harmonised_adip_ref)
+mradiref
+plotadiref <- mr_scatter_plot(mradiref, harmonised_adip_ref)
+plotadiref
+```
+
+```{r}
+looivw <- mr_leaveoneout(harmonised_adip_ref)
+looivw
+plooivw <- mr_leaveoneout_plot(looivw)
+plooivw
+```

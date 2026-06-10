@@ -1,0 +1,139 @@
+
+```{r}
+library(TwoSampleMR)
+library(dplyr)
+library(openxlsx)
+library(data.table)
+hba1cins <- read.xlsx("data\\hba1c.xlsx")
+refbio <- fread("data\\mse.txt.gz")
+library(tidyverse)
+
+```
+
+ 
+```{r}
+
+hba1c_clumped <- format_data(hba1cins,
+                          type = "exposure",
+                          effect_allele_col = "A1",
+                          beta_col = "BETA",
+                          se_col = "SE",
+                          other_allele_col = "A2",
+                          pval_col = "P",
+                          eaf_col = "EAF")
+
+hba1c_data <- clump_data(hba1c_clumped, clump_r2 = 0.001)
+```
+
+
+
+```{r}
+refractive_data <- merge(refbio,
+                         hba1c_data,
+                         by="SNP")
+
+refractive_data <- unique(refractive_data)
+```
+
+
+
+```{r}
+refractive_data <- data.frame(refractive_data)
+ref_clumped <- format_data(refractive_data,
+                           type = "outcome",
+                           effect_allele_col = "EA",
+                           beta_col = "BETA",
+                           se_col = "SE",
+                           other_allele_col = "NEA",
+                           pval_col = "P",
+                           eaf_col = "EAF")
+```
+
+
+```{r}
+harmonised_hba1c_ref <- harmonise_data(exposure_dat = hba1c_data,
+                                    outcome_dat = ref_clumped)
+```
+
+
+```{r}
+F <- 
+  harmonised_hba1c_ref$beta.exposure^2/harmonised_hba1c_ref$se.exposure^2
+mF <- mean(F)
+mF
+```
+
+```{r}
+mr_hba1c_ref <- mr(harmonised_hba1c_ref, 
+                method_list = "mr_ivw")
+mr_hba1c_ref
+```
+
+```{r}
+mr_scatter_plot(mr_hba1c_ref, harmonised_hba1c_ref)
+```
+
+
+
+```{r}
+mr_heterogeneity(harmonised_hba1c_ref)
+```
+
+
+```{r}
+mr_hba1c_ref_egg <-  mr(harmonised_hba1c_ref, 
+                     method_list = "mr_egger_regression")
+mr_hba1c_ref_egg
+
+mr_hba1c_egg_int <- mr_pleiotropy_test(harmonised_hba1c_ref)
+
+mr_hba1c_egg_int
+
+```
+
+
+```{r}
+mr_scatter_plot(mr_hba1c_ref_egg, harmonised_hba1c_ref)
+```
+
+
+```{r}
+mr_hba1c_ref_wm <-  mr(harmonised_hba1c_ref, 
+                    method_list = "mr_weighted_median")
+mr_hba1c_ref_wm
+```
+
+
+```{r}
+mr_scatter_plot(mr_hba1c_ref_wm, harmonised_hba1c_ref)
+```
+
+
+```{r}
+mr_density_plot(mr_singlesnp(harmonised_hba1c_ref),
+                mr_hba1c_ref)
+```
+
+
+```{r}
+mr_funnel_plot(mr_singlesnp(harmonised_hba1c_ref))
+```
+
+
+```{r}
+mr_forest_plot(mr_singlesnp(harmonised_hba1c_ref))
+```
+
+```{r}
+mrhbaref <- mr(harmonised_hba1c_ref)
+mrhbaref
+plothbaref <- mr_scatter_plot(mrhbaref, harmonised_hba1c_ref)
+plothbaref
+```
+```{r}
+looivw <- mr_leaveoneout(harmonised_hba1c_ref)
+looivw
+plooivw <- mr_leaveoneout_plot(looivw)
+plooivw
+```
+

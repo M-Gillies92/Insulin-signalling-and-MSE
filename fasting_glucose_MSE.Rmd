@@ -1,0 +1,155 @@
+
+
+```{r}
+library(TwoSampleMR)
+library(dplyr)
+library(openxlsx)
+library(data.table)
+gluins <- read.xlsx("data\\fasting_glucose.xlsx")
+refbio <- fread("data\\mse.txt.gz")
+library(tidyverse)
+
+```
+
+
+```{r}
+
+glu_clumped <- format_data(gluins,
+                          type = "exposure",
+                          effect_allele_col = "A1",
+                          beta_col = "BETA",
+                          se_col = "SE",
+                          other_allele_col = "A2",
+                          pval_col = "P",
+                          eaf_col = "EAF")
+
+glu_data <- clump_data(glu_clumped, clump_r2 = 0.001)
+```
+
+
+```{r}
+refractive_data <- merge(refbio,
+                         glu_data,
+                         by="SNP")
+
+refractive_data <- unique(refractive_data)
+```
+
+```{r}
+refractive_data <- data.frame(refractive_data)
+ref_clumped <- format_data(refractive_data,
+                           type = "outcome",
+                           effect_allele_col = "EA",
+                           beta_col = "BETA",
+                           se_col = "SE",
+                           other_allele_col = "NEA",
+                           pval_col = "P",
+                           eaf_col = "EAF")
+```
+
+```{r}
+harmonised_glu_ref <- harmonise_data(exposure_dat = glu_data,
+                                    outcome_dat = ref_clumped)
+```
+
+
+```{r}
+F <- 
+  harmonised_glu_ref$beta.exposure^2/harmonised_glu_ref$se.exposure^2
+mF <- mean(F)
+mF
+```
+
+
+```{r}
+mr_glu_ref <- mr(harmonised_glu_ref, 
+                method_list = "mr_ivw")
+mr_glu_ref
+```
+
+```{r}
+mr_scatter_plot(mr_glu_ref, harmonised_glu_ref)
+```
+
+
+
+```{r}
+mr_heterogeneity(harmonised_glu_ref)
+```
+
+
+```{r}
+mr_glu_ref_egg <-  mr(harmonised_glu_ref, 
+                     method_list = "mr_egger_regression")
+mr_glu_ref_egg
+
+mr_glu_egg_int <- mr_pleiotropy_test(harmonised_glu_ref)
+
+mr_glu_egg_int
+
+```
+
+
+```{r}
+mr_scatter_plot(mr_glu_ref_egg, harmonised_glu_ref)
+```
+
+
+
+```{r}
+mr_glu_ref_wm <-  mr(harmonised_glu_ref, 
+                    method_list = "mr_weighted_median")
+mr_glu_ref_wm
+```
+
+
+
+```{r}
+mr_scatter_plot(mr_glu_ref_wm, harmonised_glu_ref)
+```
+
+
+```{r}
+mr_density_plot(mr_singlesnp(harmonised_glu_ref),
+                mr_glu_ref)
+```
+
+```{r}
+mr_funnel_plot(mr_singlesnp(harmonised_glu_ref))
+```
+
+```{r}
+mr_forest_plot(mr_singlesnp(harmonised_glu_ref))
+```
+
+
+```{r}
+mrgluref <- mr(harmonised_glu_ref)
+mrgluref
+plotgluref <- mr_scatter_plot(mrgluref, harmonised_glu_ref)
+plotgluref
+```
+
+```{r}
+looivw <- mr_leaveoneout(harmonised_glu_ref)
+looivw
+plooivw <- mr_leaveoneout_plot(looivw)
+plooivw
+```
+
+
+```{r}
+looegg <- mr_leaveoneout(harmonised_glu_ref, method = mr_egger_regression)
+looegg
+plooegg <- mr_leaveoneout_plot(looegg)
+plooegg
+```
+
+```{r}
+loowm <- mr_leaveoneout(harmonised_glu_ref, method = mr_weighted_median)
+loowm
+ploowm <- mr_leaveoneout_plot(loowm)
+ploowm
+```
+
+

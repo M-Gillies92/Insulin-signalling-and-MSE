@@ -1,0 +1,143 @@
+
+
+```{r}
+library(TwoSampleMR)
+library(dplyr)
+library(openxlsx)
+library(data.table)
+bmiins <- read.xlsx("data\\bmi.xlsx")
+refbio <- fread("data\\mse.txt.gz")
+
+library(tidyverse)
+
+```
+
+
+```{r}
+
+bmi_clumped <- format_data(bmiins,
+                          type = "exposure",
+                          effect_allele_col = "A1",
+                          beta_col = "BETA",
+                          se_col = "SE",
+                          other_allele_col = "A2",
+                          pval_col = "P",
+                          eaf_col = "EAF")
+
+bmi_data <- clump_data(bmi_clumped, clump_r2 = 0.001)
+```
+
+
+
+```{r}
+refractive_data <- merge(refbio,
+                         bmi_data,
+                         by="SNP")
+
+refractive_data <- unique(refractive_data)
+```
+
+
+```{r}
+refractive_data <- data.frame(refractive_data)
+
+ref_clumped <- format_data(refractive_data,
+                           type = "outcome",
+                           effect_allele_col = "EA",
+                           beta_col = "BETA",
+                           se_col = "SE",
+                           other_allele_col = "NEA",
+                           pval_col = "P",
+                           eaf_col = "EAF")
+```
+
+```{r}
+harmonised_bmi_ref <- harmonise_data(exposure_dat = bmi_data,
+                                    outcome_dat = ref_clumped)
+
+```
+
+```{r}
+F <- 
+  harmonised_bmi_ref$beta.exposure^2/harmonised_bmi_ref$se.exposure^2
+mF <- mean(F)
+mF
+```
+
+```{r}
+mr_bmi_ref <- mr(harmonised_bmi_ref, 
+                method_list = "mr_ivw")
+mr_bmi_ref
+```
+
+```{r}
+mr_scatter_plot(mr_bmi_ref, harmonised_bmi_ref)
+```
+
+
+```{r}
+mr_heterogeneity(harmonised_bmi_ref)
+```
+
+```{r}
+mr_bmi_ref_egg <-  mr(harmonised_bmi_ref, 
+                     method_list = "mr_egger_regression")
+mr_bmi_ref_egg
+
+mr_bmi_egg_int <- mr_pleiotropy_test(harmonised_bmi_ref)
+
+mr_bmi_egg_int
+```
+
+
+
+```{r}
+mr_scatter_plot(mr_bmi_ref_egg, harmonised_bmi_ref)
+```
+
+
+
+```{r}
+mr_bmi_ref_wm <-  mr(harmonised_bmi_ref, 
+                    method_list = "mr_weighted_median")
+mr_bmi_ref_wm
+
+mr_bmi_egg_int <- mr_pleiotropy_test(harmonised_bmi_ref)
+
+mr_bmi_egg_int
+```
+
+
+```{r}
+mr_scatter_plot(mr_bmi_ref_wm, harmonised_bmi_ref)
+```
+
+
+```{r}
+mr_density_plot(mr_singlesnp(harmonised_bmi_ref),
+                mr_bmi_ref)
+```
+
+
+```{r}
+mr_funnel_plot(mr_singlesnp(harmonised_bmi_ref))
+```
+
+
+```{r}
+mr_forest_plot(mr_singlesnp(harmonised_bmi_ref))
+```
+
+```{r}
+mrbmiref <- mr(harmonised_bmi_ref)
+mrbmiref
+plotbmiref <- mr_scatter_plot(mrbmiref, harmonised_bmi_ref)
+plotbmiref
+```
+
+```{r}
+looivw <- mr_leaveoneout(harmonised_bmi_ref)
+looivw
+plooivw <- mr_leaveoneout_plot(looivw)
+plooivw
+```

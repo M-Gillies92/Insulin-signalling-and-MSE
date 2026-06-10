@@ -1,0 +1,131 @@
+
+
+```{r}
+library(TwoSampleMR)
+library(dplyr)
+library(openxlsx)
+library(data.table)
+twohrins <- read.xlsx("C:\\Users\\ru20211\\OneDrive - University of Bristol\\Documents\\2hrs.xlsx")
+refbio <- fread("C:\\Users\\ru20211\\OneDrive - University of Bristol\\Documents\\GhorbaniMojarradN_31670792_AutorefractionMeasuredRefractiveError.txt.gz")
+library(tidyverse)
+
+```
+
+
+```{r}
+
+two_clumped <- format_data(twohrins,
+                          type = "exposure",
+                          effect_allele_col = "A1",
+                          beta_col = "BETA",
+                          se_col = "SE",
+                          other_allele_col = "A2",
+                          pval_col = "P",
+                          eaf_col = "EAF")
+
+two_data <- clump_data(two_clumped, clump_r2 = 0.001)
+```
+
+
+```{r}
+refractive_data <- merge(refbio,
+                         two_data,
+                         by="SNP")
+
+refractive_data <- unique(refractive_data)
+```
+
+
+
+```{r}
+refractive_data <- data.frame(refractive_data)
+ref_clumped <- format_data(refractive_data,
+                           type = "outcome",
+                           effect_allele_col = "EA",
+                           beta_col = "BETA",
+                           se_col = "SE",
+                           other_allele_col = "NEA",
+                           pval_col = "P",
+                           eaf_col = "EAF")
+```
+
+
+```{r}
+harmonised_two_ref <- harmonise_data(exposure_dat = two_data,
+                                    outcome_dat = ref_clumped)
+```
+
+
+
+```{r}
+F <- 
+  harmonised_two_ref$beta.exposure^2/harmonised_two_ref$se.exposure^2
+mF <- mean(F)
+mF
+```
+
+
+
+```{r}
+mr_two_ref <- mr(harmonised_two_ref, 
+                method_list = "mr_ivw")
+mr_two_ref
+```
+
+
+```{r}
+mr_scatter_plot(mr_two_ref, harmonised_two_ref)
+```
+
+```{r}
+mr_heterogeneity(harmonised_two_ref)
+```
+
+
+```{r}
+mr_two_ref_egg <-  mr(harmonised_two_ref, 
+                     method_list = "mr_egger_regression")
+mr_two_ref_egg
+
+mr_two_egg_int <- mr_pleiotropy_test(harmonised_two_ref)
+
+mr_two_egg_int
+```
+
+
+```{r}
+mr_scatter_plot(mr_two_ref_egg, harmonised_two_ref)
+```
+
+
+
+```{r}
+mr_two_ref_wm <-  mr(harmonised_two_ref, 
+                    method_list = "mr_weighted_median")
+mr_two_ref_wm
+```
+
+
+```{r}
+mr_scatter_plot(mr_two_ref_wm, harmonised_two_ref)
+```
+
+
+```{r}
+mr_forest_plot(mr_singlesnp(harmonised_two_ref))
+```
+
+```{r}
+mr2hrref <- mr(harmonised_two_ref)
+mr2hrref
+plot2hrref <- mr_scatter_plot(mr2hrref, harmonised_two_ref)
+plot2hrref
+```
+
+```{r}
+looivw <- mr_leaveoneout(harmonised_two_ref)
+looivw
+plooivw <- mr_leaveoneout_plot(looivw)
+plooivw
+```
+
